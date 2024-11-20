@@ -1,0 +1,274 @@
+---
+title: "STAT391Project"
+author: "TaoZhang"
+date: "2024-02-28"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, error = FALSE)
+```
+
+```{r}
+library(plyr)
+library(dplyr)
+library(tidyverse)
+library(openintro)
+library(alr4)
+library (ggplot2)
+library(ggpubr)
+library(pROC)
+```
+
+
+
+```{r}
+setwd("C:/Users/12068/OneDrive - UW/Desktop/UW Course/STAT423_hw/project")
+data <- read.csv("heart_attack_prediction_dataset.csv")
+```
+
+Problem 2: At the 5 level of significance, is there a statistically significant association between heart attack risk and smoking, controlling for Diet?
+
+```{r}
+data1 <- data[, c("Smoking","Diet","Heart.Attack.Risk")]
+
+head(data1)
+```
+
+```{r}
+problem1_data1 <- data.frame(
+    variable=c("heart attack risk", "smoking", "Alcohol.Consumption"), 
+    type=c("Categorical", "Categorical", "Categorical"), 
+    level=c("nomial", "nomial", "ordinal"),
+  
+    stringsAsFactors=FALSE)
+print(problem1_data1)
+table(data1$Heart.Attack.Risk)
+table(data1$Smoking)
+table(data1$Diet)
+```
+```{r}
+data1$Heart.Attack.Risk <- revalue(as.factor(data1$Heart.Attack.Risk), 
+                                c("1" = "risky", "0" = "not risky"))
+data1$Smoking <- revalue(as.factor(data1$Smoking),
+                      c("1" = "smoking", "0" = "not smoking"))
+Health <- filter(data1, data1$Diet == "Healthy")
+Average <- filter(data1, data1$Diet == "Average")
+Unhealth <- filter(data1, data1$Diet == "Unhealthy")
+p1 <-ggplot(Health, aes(x = Smoking, fill = Heart.Attack.Risk)) +
+    labs(title = "Health",
+         fill = "Heart.Attack.Risk",
+         x = "Smoking",
+         y = "") +
+  geom_bar(position="fill")
+p2 <-ggplot(Average, aes(x = Smoking, fill = Heart.Attack.Risk)) +
+    labs(title = "Average Health",
+         fill = "Heart.Attack.Risk",
+         x = "Smoking",
+         y = "") +
+  geom_bar(position="fill")
+p3 <-ggplot(Unhealth, aes(x = Smoking, fill = Heart.Attack.Risk)) +
+    labs(title = "Unhealth",
+         fill = "Heart.Attack.Risk",
+         x = "Smoking",
+         y = "") +
+  geom_bar(position="fill")
+ggarrange(p1,p2,p3,ncol = 1, nrow = 3)
+```
+It looks there is not a statistically significant association between heart attack risk and smoking, controlling for Diet.
+Next, we calculate whether it's significant or not.
+
+
+
+
+
+
+```{r}
+table(data1$Heart.Attack.Risk, data1$Smoking, data1$Diet)
+mantelhaen.test(data1$Heart.Attack.Risk, data1$Smoking, data1$Diet)
+```
+
+From Cochran Mantel Haenszel (CMH) Test, the p-value > 0.1, so we fail to reject the H_0 and there is not a sufficient evidence to support that Diet is  not a confounding variable.
+
+```{r}
+Healthy_chi <- chisq.test(Health$Heart.Attack.Risk, Health$Smoking)
+Healthy_chi
+
+Average_chi <- chisq.test(Average$Heart.Attack.Risk, Average$Smoking)
+Average_chi
+
+unhealthy_chi <- chisq.test(Unhealth$Heart.Attack.Risk, Unhealth$Smoking)
+unhealthy_chi
+```
+
+##### Healthy diet
+H_0: there is no association between variables smoking and Heart.Attack.Risk among Healthy diet people. 
+H_a: there is an association between variables smoking and Heart.Attack.Risk among Healthy diet people. 
+
+In Healthy diet people sample, from chi-squared test, since p-value > 0.1, so we fail to reject the H_0 and there is not a sufficient evidence to support that there is an association between variables smoking and Heart.Attack.Risk. 
+
+
+##### Healthy diet
+H_0: there is no association between variables smoking and Heart.Attack.Risk among Average Healthy diet people. 
+H_a: there is an association between variables smoking and Heart.Attack.Risk among Average Healthy diet people. 
+
+In Average Healthy diet people sample, from chi-squared test, since p-value > 0.1, so we fail to reject the H_0 and there is not a sufficient evidence to support that there is an association between variables smoking and Heart.Attack.Risk. 
+
+
+##### Healthy diet
+H_0: there is no association between variables smoking and Heart.Attack.Risk among unhealthy diet people. 
+H_a: there is an association between variables smoking and Heart.Attack.Risk among unhealthy diet people. 
+In unhealthy diet people sample, from chi-squared test, since p-value > 0.1, so we fail to reject the H_0 and there is not a sufficient evidence to support that there is an association between variables smoking and Heart.Attack.Risk. 
+
+
+```{r}
+head(data)
+```
+
+
+Problem 3:
+
+```{r}
+data$AgeGroup <- cut(data$Age, breaks=4, labels=c("Youth", "Young Adult", "Middle Aged", "Senior"))
+data$HeartRateGroup <- cut(data$Heart.Rate, breaks=4, labels=c("Low", "Medium", "High", "Very High"))
+data$ExerciseHoursGroup <- cut(data$Exercise.Hours.Per.Week, breaks=4, labels=c("Sedentary", "Light", "Moderate", "Active"))
+
+ggplot(data, aes(x=AgeGroup, y=Heart.Attack.Risk, fill=AgeGroup)) +
+  geom_bar(stat="summary", fun=mean) +
+  ggtitle("Heart Attack Risk by Age Group") +
+  xlab("Age Group") +
+  ylab("Average Heart Attack Risk")
+
+
+ggplot(data, aes(x=HeartRateGroup, y=Heart.Attack.Risk, fill=HeartRateGroup)) +
+  geom_bar(stat="summary", fun=mean) +
+  ggtitle("Heart Attack Risk by Heart Rate Group") +
+  xlab("Heart Rate Group") +
+  ylab("Average Heart Attack Risk")
+
+ggplot(data, aes(x=ExerciseHoursGroup, y=Heart.Attack.Risk, fill=ExerciseHoursGroup)) +
+  geom_bar(stat="summary", fun=mean) +
+  ggtitle("Heart Attack Risk by Exercise Hours Group") +
+  xlab("Exercise Hours Group") +
+  ylab("Average Heart Attack Risk")
+
+ggplot(data, aes(x=factor(Heart.Attack.Risk), y=Age)) +
+  geom_boxplot() +
+  ggtitle("Age Distribution by Heart Attack Risk") +
+  xlab("Heart Attack Risk") +
+  ylab("Age")
+
+ggplot(data, aes(x=factor(Heart.Attack.Risk), y=Heart.Rate)) +
+  geom_boxplot() +
+  ggtitle("Heart Rate Distribution by Heart Attack Risk") +
+  xlab("Heart Attack Risk") +
+  ylab("Heart Rate")
+
+ggplot(data, aes(x=factor(Heart.Attack.Risk), y=Exercise.Hours.Per.Week)) +
+  geom_boxplot() +
+  ggtitle("Exercise Hours Per Week Distribution by Heart Attack Risk") +
+  xlab("Heart Attack Risk") +
+  ylab("Exercise Hours Per Week")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Problem 4:
+```{r}
+data <- read.csv("heart_attack_prediction_dataset.csv")
+model1 <- glm(as.factor(Heart.Attack.Risk) ~ Age + Sex+ Cholesterol+ Heart.Rate+Diabetes+Family.History+Smoking+  Obesity + Alcohol.Consumption + Exercise.Hours.Per.Week + Stress.Level + Income + BMI + Triglycerides + Country,
+                      data = data,
+                      family = binomial)
+
+summary(model1)
+```
+
+```{r}
+model2 = glm(as.factor(Heart.Attack.Risk) ~  Obesity + Alcohol.Consumption +Exercise.Hours.Per.Week+Stress.Level+Income+BMI+Triglycerides, data = data, family = binomial)
+anova(model1, model2,  test = "Chisq")
+```
+
+```{r}
+head(data)
+```
+
+
+```{r}
+plot(model1)
+```
+
+
+
+
+
+```{r}
+# 预测概率，并基于0.5阈值进行分类
+```
+
+
+```{r}
+data$predicted_probabilities <- predict(model1, data, type="response")
+data$prediction <- ifelse(data$predicted_probabilities >= 0.5, 1, 0)
+
+# 创建两个新的数据框：一个用于成功预测，另一个用于不成功预测
+success <- data[data$Heart.Attack.Risk == data$prediction, ]
+not_success <- data[data$Heart.Attack.Risk != data$prediction, ]
+```
+
+
+```{r}
+```
+
+
+```{r}
+boxplot(data$predicted_probabilities)
+```
+
+
+```{r}
+model1 <- glm(as.factor(Heart.Attack.Risk) ~ Age + Sex+ Cholesterol+ Heart.Rate+Diabetes+Family.History+Smoking+  Obesity + Alcohol.Consumption + Exercise.Hours.Per.Week + Stress.Level + Income + BMI + Triglycerides + Country,
+                      data = success,
+                      family = binomial)
+summary(model1)
+```
+
+
+
+
+
+
+```{r}
+predicted_probabilities <- predict(model1, data, type = "response")
+
+roc_obj <- roc(data$Heart.Attack.Risk, predicted_probabilities)
+
+plot(roc_obj, main="ROC Curve", col="#1c61b6", lwd=2)
+abline(a=0, b=1, col="red")
+
+auc(roc_obj)
+```
+
+
+
+
+
+
+
+
+
+
